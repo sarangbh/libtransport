@@ -229,15 +229,28 @@ void TwitterPlugin::handleMessageSendRequest(const std::string &user, const std:
 				return;
 			}
 
-			setTwitterMode(user, m);
-			if((userdb[user].twitterMode == SINGLECONTACT || userdb[user].twitterMode == CHATROOM) && prevm == MULTIPLECONTACT) clearRoster(user);
-			else if(userdb[user].twitterMode == MULTIPLECONTACT) 
-				tp->runAsThread(new FetchFriends(userdb[user].sessions, user, boost::bind(&TwitterPlugin::populateRoster, this, _1, _2, _3, _4)));
-
 			handleMessage(user, userdb[user].twitterMode == CHATROOM ? adminChatRoom : adminLegacyName,
-								std::string("Changed mode to ") + data, userdb[user].twitterMode == CHATROOM ? adminNickName : "");
+								std::string("Changing mode to ") + data, userdb[user].twitterMode == CHATROOM ? adminNickName : "");
+			
+			LOG4CXX_INFO(logger, user << ": Changing mode to " << data  << " <" << (userdb[user].twitterMode == CHATROOM ? adminNickName : "") << ">" )
 
-			LOG4CXX_INFO(logger, user << ": Changed mode to " << data  << " <" << (userdb[user].twitterMode == CHATROOM ? adminNickName : "") << ">" )
+			setTwitterMode(user, m);
+
+			if((userdb[user].twitterMode == SINGLECONTACT || userdb[user].twitterMode == CHATROOM) && prevm == MULTIPLECONTACT)
+				clearRoster(user);
+
+			if(userdb[user].twitterMode == SINGLECONTACT)
+				handleBuddyChanged(user, adminLegacyName, adminAlias, std::vector<std::string>(), pbnetwork::STATUS_ONLINE);
+			
+			if(userdb[user].twitterMode == CHATROOM) { 
+				handleMessage(user, adminLegacyName, std::string("Please connect to the chatroom 'twitter-chatroom'! Going offline now..."), "");
+				handleBuddyChanged(user, adminLegacyName, adminAlias, std::vector<std::string>(), pbnetwork::STATUS_NONE);
+			}
+
+			if(userdb[user].twitterMode == MULTIPLECONTACT) {
+				handleBuddyChanged(user, adminLegacyName, adminAlias, std::vector<std::string>(), pbnetwork::STATUS_ONLINE);
+				tp->runAsThread(new FetchFriends(userdb[user].sessions, user, boost::bind(&TwitterPlugin::populateRoster, this, _1, _2, _3, _4)));
+			}
 		}
 
 		else if(userdb[user].twitterMode == CHATROOM) {
@@ -251,9 +264,11 @@ void TwitterPlugin::handleMessageSendRequest(const std::string &user, const std:
 												 		 boost::bind(&TwitterPlugin::directMessageResponse, this, _1, _2, _3, _4)));
 			}
 		}
-		else handleMessage(user, userdb[user].twitterMode == CHATROOM ? adminChatRoom : adminLegacyName,
-				                 "Unknown command! Type #help for a list of available commands.", userdb[user].twitterMode == CHATROOM ? adminNickName : "");
-	} 
+
+		else
+			tp->runAsThread(new StatusUpdateRequest(userdb[user].sessions, user, message,
+													boost::bind(&TwitterPlugin::statusUpdateResponse, this, _1, _2)));
+	}
 
 	else {	
 		std::string buddy;
