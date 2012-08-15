@@ -17,6 +17,8 @@ DEFINE_LOGGER(logger, "Twitter Backend");
 TwitterPlugin *np = NULL;
 Swift::SimpleEventLoop *loop_; // Event Loop
 
+// OLD_APP_KEY and OLD_APP_SECRET are the consumer key and secret used by spectrum 1, which is the keys registered for lippurple microblog plugin.
+// The following keys are used if the user connecting to Twitter Backend is a spectrum 1 user.
 const std::string OLD_APP_KEY = "PCWAdQpyyR12ezp2fVwEhw";
 const std::string OLD_APP_SECRET = "EveLmCXJIg2R7BTCpm6OWV8YyX49nI0pxnYXh7JMvDg";
 
@@ -66,8 +68,8 @@ TwitterPlugin::TwitterPlugin(Config *config, Swift::SimpleEventLoop *loop, Stora
 
 	tp = new ThreadPool(loop_, 10);
 		
-	tweet_timer = m_factories->getTimerFactory()->createTimer(60000);
-	message_timer = m_factories->getTimerFactory()->createTimer(60000);
+	tweet_timer = m_factories->getTimerFactory()->createTimer(60000); // Poll interval for tweets
+	message_timer = m_factories->getTimerFactory()->createTimer(60000); // Poll interval for direct messages
 
 	tweet_timer->onTick.connect(boost::bind(&TwitterPlugin::pollForTweets, this));
 	message_timer->onTick.connect(boost::bind(&TwitterPlugin::pollForDirectMessages, this));
@@ -105,11 +107,11 @@ void TwitterPlugin::handleLoginRequest(const std::string &user, const std::strin
 	if(userdb.count(user) && (userdb[user].connectionState == NEW || 
 										userdb[user].connectionState == CONNECTED || 
 										userdb[user].connectionState == WAITING_FOR_PIN)) {
-		LOG4CXX_INFO(logger, std::string("A session corresponding to ") + user + std::string(" is already active"))
+		LOG4CXX_INFO(logger, "A session corresponding to " << user << " is already active")
 		return;
 	}
 	
-	LOG4CXX_INFO(logger, std::string("Received login request for ") + user)	
+	LOG4CXX_INFO(logger, "Received login request for " << user)	
 	initUserSession(user, legacyName, password);
 	handleConnected(user);
 	
@@ -119,11 +121,11 @@ void TwitterPlugin::handleLoginRequest(const std::string &user, const std::strin
 	handleBuddyChanged(user, adminLegacyName, adminAlias, std::vector<std::string>(), pbnetwork::STATUS_ONLINE);
 	userdb[user].nickName = "";
 	
-	LOG4CXX_INFO(logger, "Querying database for usersettings of " << user)
+	LOG4CXX_INFO(logger, "Querying database for user settings of " << user)
 	std::string key, secret;
 	getUserOAuthKeyAndSecret(user, key, secret);
 
-	if(key == "" || secret == "") {			
+	if(key == "" || secret == "") { // If the user is logging in for the first time			
 		LOG4CXX_INFO(logger, "Intiating OAuth Flow for user " << user)
 		setTwitterMode(user, 0);
 		tp->runAsThread(new OAuthFlow(np, userdb[user].sessions, user, userdb[user].sessions->getTwitterUsername()));
@@ -150,7 +152,6 @@ void TwitterPlugin::handleJoinRoomRequest(const std::string &user, const std::st
 {
 	if(room == adminChatRoom) {	
 		LOG4CXX_INFO(logger, "Received Join Twitter room request for " << user)
-
 		setTwitterMode(user, 2);
 		handleParticipantChanged(user, adminNickName, room, 0, pbnetwork::STATUS_ONLINE);
 		userdb[user].nickName = nickname;
@@ -364,9 +365,9 @@ bool TwitterPlugin::checkSpectrum1User(const std::string user)
 	int type;
 	storagebackend->getUserSetting((long)info.id, "first_synchronization_done", type, first_synchronization_done);
 
-	LOG4CXX_INFO(logger, "first_synchronization_done: " << first_synchronization_done)
+	//LOG4CXX_INFO(logger, "first_synchronization_done: " << first_synchronization_done)
 
-	if(first_synchronization_done.length()) return true;
+	if(first_synchronization_done.length()) return true; // This setting variable is present for all spectrum 1 users.
 	return false;
 }
 

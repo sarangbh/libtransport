@@ -44,7 +44,6 @@ class TwitterPlugin;
 extern TwitterPlugin *np;
 extern Swift::SimpleEventLoop *loop_; // Event Loop
 
-
 class TwitterPlugin : public NetworkPlugin {
 	public:
 		Swift::BoostNetworkFactories *m_factories;
@@ -69,46 +68,67 @@ class TwitterPlugin : public NetworkPlugin {
 		// User logging out
 		void handleLogoutRequest(const std::string &user, const std::string &legacyName);
 		
+		// User joins chatroom
 		void handleJoinRoomRequest(const std::string &/*user*/, const std::string &/*room*/, const std::string &/*nickname*/, const std::string &/*pasword*/);
 
+		// User leaves chatroom
 		void handleLeaveRoomRequest(const std::string &/*user*/, const std::string &/*room*/);
 
+		// Handle messages sent by the XMPP user to the legacy network
 		void handleMessageSendRequest(const std::string &user, const std::string &legacyName, const std::string &message, const std::string &xhtml = "");
 
+		// Handle changes to legacy network buddy
 		void handleBuddyUpdatedRequest(const std::string &user, const std::string &buddyName, const std::string &alias, const std::vector<std::string> &groups);
 
+		// User removes buddy from his roster (Unfollows a twitter user)
 		void handleBuddyRemovedRequest(const std::string &user, const std::string &buddyName, const std::vector<std::string> &groups);
 		
+		// For vCard based avatar requests
 		void handleVCardRequest(const std::string &/*user*/, const std::string &/*legacyName*/, unsigned int /*id*/);
 		
+		// Poll for tweets at regular intervals and update the user
 		void pollForTweets();
 
+		// Poll for any direct messages sent to the user 
 		void pollForDirectMessages();
 		
+		// Retrieve user's oauth token and secret from the DB
 		bool getUserOAuthKeyAndSecret(const std::string user, std::string &key, std::string &secret);
 		
+		// Check and return true if "user" is a spectrum 1 user
 		bool checkSpectrum1User(const std::string user);
 		
+		// Store user's oauth token and secret in the DB
 		bool storeUserOAuthKeyAndSecret(const std::string user, const std::string OAuthKey, const std::string OAuthSecret);
 		
+		// Initialize user session
 		void initUserSession(const std::string user, const std::string legacyName, const std::string password);
 		
+		// A Callback that is invoked when OAuthRequest completes
 		void OAuthFlowComplete(const std::string user, twitCurl *obj);
 		
+		// Callback that is invoked when PIN exchange is completed
 		void pinExchangeComplete(const std::string user, const std::string OAuthAccessTokenKey, const std::string OAuthAccessTokenSecret);
 		
+		// Update the last tweet ID for the user
 		void updateLastTweetID(const std::string user, const std::string ID);
 
+		// Retrieve user's last tweet ID
 		std::string getMostRecentTweetID(const std::string user);
 
+		// Update the message ID corresponding to the most recent direct message
 		void updateLastDMID(const std::string user, const std::string ID);
 		
+		// Retrieve the most recent direct message ID
 		std::string getMostRecentDMID(const std::string user);
 
+		// Remove all followers from the user's roster. Used while switching from mode 1 to 0 or 2.
 		void clearRoster(const std::string user);
 
+		// Return the current mode i.e 0, 1 or 2
 		int getTwitterMode(const std::string user);
 
+		// Set the current twitter mode
 		bool setTwitterMode(const std::string user, int m);
 
 		/****************** Twitter response handlers **************************************/
@@ -134,8 +154,8 @@ class TwitterPlugin : public NetworkPlugin {
 		/***********************************************************************************/
 
 	private:
-		enum status {NEW, WAITING_FOR_PIN, CONNECTED, DISCONNECTED};
-		enum mode {SINGLECONTACT, MULTIPLECONTACT, CHATROOM};
+		enum status {NEW, WAITING_FOR_PIN, CONNECTED, DISCONNECTED}; // Various states in which a user session can exist
+		enum mode {SINGLECONTACT, MULTIPLECONTACT, CHATROOM}; // Different modes 
 
 		Config *config;
 		std::string adminLegacyName;
@@ -155,8 +175,8 @@ class TwitterPlugin : public NetworkPlugin {
 		std::set<std::string> onlineUsers;
 		struct UserData
 		{
-			std::string legacyName;
-			bool spectrum1User; //Legacy support
+			std::string legacyName; // User's id in the legacy network 
+			bool spectrum1User; // Legacy support
 			User userTwitterObj;
 			std::string userImg;
 			twitCurl* sessions;		
